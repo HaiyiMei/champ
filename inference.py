@@ -28,10 +28,11 @@ from utils.video_utils import resize_tensor_frames, save_videos_grid, pil_list_t
 
 def setup_savedir(cfg):
     time_str = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    base_dir = f"{cfg.data.guidance_data_folder}/results"
     if cfg.exp_name is None:
-        savedir = f"results/exp-{time_str}"
+        savedir = f"{base_dir}/exp-{time_str}"
     else:
-        savedir = f"results/{cfg.exp_name}-{time_str}"
+        savedir = f"{base_dir}/{cfg.exp_name}-{time_str}"
 
     os.makedirs(savedir, exist_ok=True)
 
@@ -295,14 +296,24 @@ def main(cfg):
         ]
     guidance_video_tensor = torch.stack(guidance_video_tensor_lst, dim=0)
 
-    grid_video = torch.cat([ref_video_tensor, result_video_tensor], dim=0)
+    # load src images
+    src_image_lst = sorted(
+        Path(osp.join(cfg.data.guidance_data_folder, "images_crop")).iterdir()
+    )
+    if cfg.data.frame_range:
+        src_image_lst = src_image_lst[cfg.data.frame_range[0]: cfg.data.frame_range[1]]
+    src_image_pil_group = [Image.open(src_image_path).convert("RGB") for src_image_path in src_image_lst]
+    src_image_video_tensor = pil_list_to_tensor(src_image_pil_group, size=(ref_image_h, ref_image_w)).unsqueeze(0)
+
+    grid_video = torch.cat([ref_video_tensor, src_image_video_tensor, result_video_tensor], dim=0)
     grid_video_wguidance = torch.cat(
-        [ref_video_tensor, result_video_tensor, guidance_video_tensor], dim=0
+        [ref_video_tensor, result_video_tensor, guidance_video_tensor, src_image_video_tensor], dim=0
     )
 
     save_videos_grid(grid_video, osp.join(save_dir, "grid.mp4"))
     save_videos_grid(grid_video_wguidance, osp.join(save_dir, "grid_wguidance.mp4"))
 
+    print("-" * 60)
     logging.info(f"Inference completed, results saved in {save_dir}")
 
 

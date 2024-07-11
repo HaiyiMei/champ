@@ -217,6 +217,7 @@ if __name__ == "__main__":
     for video_path in tqdm(driving_videos_paths, desc="Processing Driving Videos:"):
         os.makedirs(video_path, exist_ok=True)
         os.makedirs(os.path.join(video_path, "smpl_results"), exist_ok=True)
+        os.makedirs(os.path.join(video_path, "images_crop"), exist_ok=True)
 
         driving_img_paths = [
             path for path in os.listdir(os.path.join(video_path, "images"))
@@ -237,7 +238,13 @@ if __name__ == "__main__":
                 np.save(
                     str(os.path.join(video_path, "smpl_results", f"{img_fn}.npy")),
                     results_dict_for_rendering)
+                # save detected image (cropped)
+                img_opencv = batch['img_opencv'][0].detach().cpu().numpy()
+                cv2.imwrite(
+                    str(os.path.join(video_path, "images_crop", f"{img_fn}.png")),
+                    img_opencv
+                )
                 
         np.savez(
-            str(os.path.join(video_path, "smpl_results", f"smpls_group.npz")),
+            str(os.path.join(video_path, "smpl_results", "smpls_group.npz")),
             smpl=smpls,camera=cams)

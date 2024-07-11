@@ -192,6 +192,8 @@ if __name__ == "__main__":
     argv = sys.argv
     smpls_path = argv[argv.index("--smpls_group_path") + 1]
     smpls_smoothed_path = argv[argv.index("--smoothed_result_path") + 1]
+    print(f"smpls_path: {smpls_path}")
+    print(f"smpls_smoothed_path: {smpls_smoothed_path}")
 
     import_smpls_group(smpls_path)
     smooth()

@@ -47,7 +47,7 @@ class SingleDataset:
         self.smpl_paths = sorted(
             [
                 path for i in smpl_suffixes
-                for path in (folder / "smpl_results").glob("*." + i)
+                for path in (folder / "smpl_results_transferred").glob("*." + i)
             ]
         )
         self.output_paths = [self.out_folder for smpl_path in self.smpl_paths]

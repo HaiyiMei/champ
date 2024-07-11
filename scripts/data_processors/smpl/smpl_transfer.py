@@ -1,6 +1,7 @@
 import platform
 import cv2
 from pathlib import Path
+import shutil
 import os
 import argparse
 import torch
@@ -63,13 +64,14 @@ if __name__ == "__main__":
 
     os.makedirs(os.path.join(args.output_folder), exist_ok=True)
     os.makedirs(os.path.join(args.output_folder, "visualized_imgs"), exist_ok=True)
+    os.makedirs(os.path.join(args.output_folder, "reference_img"), exist_ok=True)
     # os.makedirs(os.path.join(args.output_folder,"mesh"), exist_ok=True)
     os.makedirs(os.path.join(args.output_folder, "mask"), exist_ok=True)
     os.makedirs(os.path.join(args.output_folder, "semantic_map"), exist_ok=True)
-    os.makedirs(os.path.join(args.output_folder, "images"), exist_ok=True)
+    # os.makedirs(os.path.join(args.output_folder, "images"), exist_ok=True)
     os.makedirs(os.path.join(args.output_folder, "normal"), exist_ok=True)
     os.makedirs(os.path.join(args.output_folder, "depth"), exist_ok=True)
-    os.makedirs(os.path.join(args.output_folder, "smpl_results"), exist_ok=True)
+    os.makedirs(os.path.join(args.output_folder, "smpl_results_transferred"), exist_ok=True)
 
     driving_folder = args.driving_path
     reference_file = args.reference_path
@@ -93,26 +95,24 @@ if __name__ == "__main__":
         reference_dict = np.load(str(reference_file), allow_pickle=True).item()
         reference_path = Path(reference_file)
         reference_img = cv2.imread(
-            os.path.join(
-                reference_path.parent.parent,
-                "images",
-                reference_path.name.split(".")[0] + ".png",
-            )
-        )
+            (reference_path.parent.parent / "images" / f"{reference_path.stem}.png").as_posix())
 
-        group_smpl_path = os.path.join(driving_folder, "smpl_results", "smpls_group.npz")
+        # copy images
+        if not os.path.exists(os.path.join(driving_folder, "images_crop")):
+            shutil.copytree(os.path.join(driving_folder, "images_crop"), os.path.join(args.output_folder, "images_crop"))
+
+        group_smpl_path = os.path.join(driving_folder, "smpl_results", "smpls_group_smoothed.npz")
         if os.path.exists(group_smpl_path):
             result_dict_list = np.load(group_smpl_path, allow_pickle=True)
             result_dict_first = np.load(driving_paths[0], allow_pickle=True).item()
             i = 0
-            for smpl_outs, cam_t, foc_len, file_path in tqdm(
-                zip(result_dict_list["smpl"], result_dict_list["camera"], result_dict_list["scaled_focal_length"], driving_paths)
+            for smpl_outs, cam_t, file_path in tqdm(
+                zip(result_dict_list["smpl"], result_dict_list["camera"], driving_paths)
             ):
                 img_fn, _ = os.path.splitext(os.path.basename(file_path))
                 result_dict = {key: value for key, value in result_dict_first.items()}
                 result_dict["smpls"] = smpl_outs
                 result_dict["cam_t"] = cam_t
-                result_dict["scaled_focal_length"] = foc_len
                 if not args.figure_transfer:
                     result_dict["smpls"]["betas"] = reference_dict["smpls"]["betas"]
                 if args.view_transfer:
@@ -145,7 +145,7 @@ if __name__ == "__main__":
                 np.save(
                     str(
                         os.path.join(
-                            args.output_folder, "smpl_results", f"{img_fn}.npy"
+                            args.output_folder, "smpl_results_transferred", f"{img_fn}.npy"
                         )
                     ),
                     result_dict,
